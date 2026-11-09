@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>WICKED | Candles</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header class="topbar">
+    <a href="#home" class="logo">WICKED</a>
+    <nav class="nav" aria-label="Main">
+      <a href="#home" data-page="home">Home</a>
+      <a href="#products" data-page="products">Products</a>
+      <a href="#cart" data-page="cart">Cart <span id="cart-count" class="badge">0</span></a>
+      <a href="#contact" data-page="contact">Contact</a>
+      <a href="#help" data-page="help">Help</a>
+    </nav>
+    <label class="visually-hidden" for="search">Search candle scents</label>
+    <input id="search" class="search" type="search" placeholder="Search candle scents…">
+  </header>
+
+  <main>
+    <!-- HOME: empty first -->
+    <section id="home" class="page"></section>
+
+    <!-- PRODUCTS: full-screen hero, click a small card to make it the main one -->
+    <section id="products" class="page">
+      <div class="bg show" id="bgA"></div>
+      <div class="bg" id="bgB"></div>
+      <div class="shade"></div>
+      <div class="soft-card" id="softCard"><img id="softImg" src="" alt=""></div>
+
+      <div class="cats" role="group" aria-label="Product categories">
+        <button class="cat active" data-cat="scented">Scented Candle</button>
+        <button class="cat" data-cat="dessert">Dessert Style Candle</button>
+        <button class="cat" data-cat="melts">Wax Melts</button>
+        <button class="cat" data-cat="unscented">Unscented</button>
+      </div>
+
+      <div class="hero-text" id="heroText">
+        <p class="eyebrow" id="eyebrow"></p>
+        <h1 id="title"></h1>
+        <p id="desc"></p>
+        <div class="actions">
+          <button class="btn" id="add-btn">Add to cart</button>
+          <button class="save" id="save" aria-pressed="false" aria-label="Save to favorites">
+            <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path d="M6 3h12v18l-6-4-6 4z" fill="currentColor"/></svg>
+          </button>
+        </div>
+      </div>
+
+      <div class="thumbs" id="thumbs" aria-label="Other products"></div>
+    </section>
+
+    <!-- OTHER PAGES -->
+    <section id="cart" class="page note"><h2>Your cart</h2><div id="cart-body"></div></section>
+    <section id="contact" class="page note"><h2>Contact</h2><p>[YOUR EMAIL] · [YOUR PHONE]</p></section>
+    <section id="help" class="page note"><h2>Help</h2><p>Shipping, returns and candle care. [YOUR HELP TEXT]</p></section>
+  </main>
+
+  <div class="toast" id="toast" role="status"></div>
+
+  <script>
+    // ===== PRICES: sample numbers, change them to your real prices (per category) =====
+    const PRICE = { scented: 299, dessert: 349, melts: 149, unscented: 199 };
+
+    // ===== PRODUCT DATA: edit names, images and text here =====
+    // soft:true = low-resolution photo, shown as a framed picture over a blurred background
+    const CATEGORIES = {
+      scented: {
+        label: 'Scented Candle',
+        items: [
+          { name: 'Lavender',       img: 'lavender.jpg', desc: 'Soothing lavender with a soft floral finish. A calm scent for slow evenings.' },
+          { name: 'Bamboo',         img: 'BAMBOO.jpg',   desc: 'Clean bamboo and green tea for a calm, fresh room.' },
+          { name: 'Cherry Blossom', img: 'cherry.jpg',   desc: 'Light cherry blossom with a hint of fresh petals.' },
+          { name: 'Vanilla',        img: 'vanilla.jpg',  desc: 'Warm vanilla bean with a creamy, golden glow.' }
+        ]
+      },
+      dessert: {
+        label: 'Dessert Style Candle',
+        items: [
+          { name: 'Berry',    img: 'berry.jpg',    desc: 'Sweet mixed berries, bright and juicy.' },
+          { name: 'Matcha',   img: 'matcha.jpg',   desc: 'Earthy matcha with a smooth, creamy finish.' },
+          { name: 'Tiramisu', img: 'tiramisu.jpg', desc: 'Coffee, cocoa and mascarpone cream, like dessert.' }
+        ]
+      },
+      melts: {
+        label: 'Wax Melts',
+        items: [
+          { name: 'Pink Hearts',      img: 'melt-1.jpg', soft: true, desc: 'Hand-made soy wax melts in soft pink hearts. No wick, no flame.' },
+          { name: 'Cream Stars',      img: 'melt-2.jpg', soft: true, desc: 'Creamy white star-shaped melts, hand-poured in small batches.' },
+          { name: 'Lavender Flowers', img: 'melt-3.jpg', soft: true, desc: 'Purple flower melts for a calm, floral room.' },
+          { name: 'Lemon Flowers',    img: 'melt-4.jpg', soft: true, desc: 'Sunny yellow flower melts with a fresh citrus feel.' },
+          { name: 'Cotton Clouds',    img: 'melt-5.jpg', soft: true, desc: 'Light blue cloud melts for a clean, airy scent.' },
+          { name: 'Pink Butterflies', img: 'melt-6.jpg', soft: true, desc: 'Delicate pink butterfly melts, a favorite for gifts.' },
+          { name: 'Green Leaves',     img: 'melt-7.jpg', soft: true, desc: 'Leaf-shaped melts in fresh green.' },
+          { name: 'Orange Hearts',    img: 'melt-8.jpg', soft: true, desc: 'Warm orange hearts with a bright, sweet feel.' },
+          { name: 'White Shells',     img: 'melt-9.jpg', soft: true, desc: 'Seashell melts in pearly white.' }
+        ]
+      },
+      unscented: { label: 'Unscented', items: [] }
+    };
+
+    // ===== NAVIGATION: Home is empty, Products shows the hero =====
+    const pages = document.querySelectorAll('.page');
+    const links = document.querySelectorAll('.nav a');
+    function showPage() {
+      const id = (location.hash || '#home').slice(1);
+      const target = document.getElementById(id) ? id : 'home';
+      pages.forEach(p => p.classList.toggle('show', p.id === target));
+      links.forEach(a => a.classList.toggle('active', a.dataset.page === target));
+      document.body.classList.toggle('on-products', target === 'products');
+    }
+    window.addEventListener('hashchange', showPage);
+
+    // ===== HERO + SMALL CARDS =====
+    const $ = id => document.getElementById(id);
+    const bgs = [$('bgA'), $('bgB')];
+    let bgIndex = 0;
+    let catKey = 'scented';
+    let order = [];          // item indexes; order[0] is the main product
+    const saved = new Set(); // bookmarked product names
+
+    function setBackground(item) {
+      bgIndex = 1 - bgIndex;
+      const next = bgs[bgIndex], prev = bgs[1 - bgIndex];
+      next.style.backgroundImage = item ? 'url("' + item.img + '")' : 'none';
+      next.classList.toggle('blur', !!(item && item.soft));
+      next.classList.add('show');
+      prev.classList.remove('show');
+      $('softCard').classList.toggle('on', !!(item && item.soft));
+      if (item && item.soft) $('softImg').src = item.img;
+    }
+
+    function render(animate) {
+      const cat = CATEGORIES[catKey];
+      const items = cat.items;
+      const item = items.length ? items[order[0]] : null;
+      const hero = $('heroText');
+
+      const fill = () => {
+        $('eyebrow').textContent = cat.label;
+        $('title').textContent = item ? item.name : cat.label;
+        $('desc').textContent = item ? item.desc : 'No products here yet. [ADD YOUR PRODUCTS]';
+        $('add-btn').style.display = item ? '' : 'none';
+        $('save').style.display = item ? '' : 'none';
+        if (item) {
+          const on = saved.has(item.name);
+          $('save').classList.toggle('on', on);
+          $('save').setAttribute('aria-pressed', on);
+        }
+        hero.classList.remove('out');
+      };
+      if (animate) { hero.classList.add('out'); setTimeout(fill, 220); } else fill();
+      setBackground(item);
+
+      // small cards = the next products in line
+      const thumbs = $('thumbs');
+      thumbs.innerHTML = '';
+      order.slice(1, 5).forEach((idx, k) => {
+        const it = items[idx];
+        const b = document.createElement('button');
+        b.className = 'thumb';
+        b.style.animationDelay = (k * 60) + 'ms';
+        b.innerHTML = '<img src="' + it.img + '" alt=""><small>' + cat.label + '</small><strong>' + it.name + '</strong>';
+        b.addEventListener('click', () => { // clicked card becomes the main one, the rest rotate
+          const pos = order.indexOf(idx);
+          order = order.slice(pos).concat(order.slice(0, pos));
+          render(true);
+        });
+        thumbs.appendChild(b);
+      });
+    }
+
+    function showCategory(key, firstIndex) {
+      catKey = key;
+      const n = CATEGORIES[key].items.length;
+      order = [...Array(n).keys()];
+      if (firstIndex) order = order.slice(firstIndex).concat(order.slice(0, firstIndex));
+      document.querySelectorAll('.cat').forEach(b => b.classList.toggle('active', b.dataset.cat === key));
+      render(true);
+    }
+    document.querySelectorAll('.cat').forEach(b => b.addEventListener('click', () => showCategory(b.dataset.cat)));
+
+    // ===== ADD TO CART button adds the main product; bookmark saves =====
+    $('add-btn').addEventListener('click', () => {
+      const item = CATEGORIES[catKey].items[order[0]];
+      addToCart({ name: item.name, img: item.img, price: PRICE[catKey] });
+      toast(item.name + ' added to cart');
+    });
+    $('save').addEventListener('click', () => {
+      const name = CATEGORIES[catKey].items[order[0]].name;
+      saved.has(name) ? saved.delete(name) : saved.add(name);
+      render(false);
+    });
+
+    // ===== SEARCH: type a scent name + Enter =====
+    $('search').addEventListener('keydown', e => {
+      if (e.key !== 'Enter') return;
+      const q = e.target.value.trim().toLowerCase();
+      location.hash = '#products';
+      if (!q) return;
+      for (const key in CATEGORIES) {
+        const i = CATEGORIES[key].items.findIndex(it => it.name.toLowerCase().includes(q));
+        if (i >= 0) { showCategory(key, i); return; }
+      }
+    });
+
+    // ===== CART (saved in the browser, so it stays after refresh) =====
+    const money = n => '\u20B1' + n.toLocaleString();
+    let cart = [];
+    try { cart = JSON.parse(localStorage.getItem('wickedCart')) || []; } catch (e) {}
+
+    function saveCart() { try { localStorage.setItem('wickedCart', JSON.stringify(cart)); } catch (e) {} }
+
+    function addToCart(item) {
+      const found = cart.find(c => c.name === item.name);
+      if (found) found.qty++; else cart.push({ name: item.name, img: item.img, price: item.price, qty: 1 });
+      saveCart(); renderCart();
+    }
+    function changeQty(name, delta) {
+      const c = cart.find(x => x.name === name);
+      if (!c) return;
+      c.qty += delta;
+      if (c.qty <= 0) cart = cart.filter(x => x !== c);
+      saveCart(); renderCart();
+    }
+    function removeItem(name) { cart = cart.filter(x => x.name !== name); saveCart(); renderCart(); }
+
+    function renderCart() {
+      const count = cart.reduce((s, c) => s + c.qty, 0);
+      $('cart-count').textContent = count;
+      $('cart-count').classList.toggle('has', count > 0);
+      const body = $('cart-body');
+      if (cart.length === 0) {
+        body.innerHTML = '<p class="cart-empty">Your cart is empty. Pick a candle from <a href="#products">Products</a> to add it here.</p>';
+        return;
+      }
+      body.innerHTML = '';
+      cart.forEach(c => {
+        const row = document.createElement('div');
+        row.className = 'cart-row';
+        row.innerHTML = '<img src="' + c.img + '" alt="">' +
+          '<div class="cr-name"><strong>' + c.name + '</strong><span>' + money(c.price) + ' each</span></div>' +
+          '<div class="qty"><button aria-label="Less">\u2212</button><b>' + c.qty + '</b><button aria-label="More">+</button></div>' +
+          '<div class="cr-total">' + money(c.price * c.qty) + '</div>' +
+          '<button class="cr-remove" aria-label="Remove ' + c.name + '">&times;</button>';
+        const [less, more] = row.querySelectorAll('.qty button');
+        less.addEventListener('click', () => changeQty(c.name, -1));
+        more.addEventListener('click', () => changeQty(c.name, 1));
+        row.querySelector('.cr-remove').addEventListener('click', () => removeItem(c.name));
+        body.appendChild(row);
+      });
+      const total = cart.reduce((s, c) => s + c.price * c.qty, 0);
+      const foot = document.createElement('div');
+      foot.className = 'cart-foot';
+      foot.innerHTML = '<div>Total <strong>' + money(total) + '</strong></div><button class="btn" id="checkout">Checkout</button>';
+      foot.querySelector('#checkout').addEventListener('click', () => toast('Checkout is not connected yet'));
+      body.appendChild(foot);
+    }
+
+    let toastTimer;
+    function toast(msg) {
+      const t = $('toast');
+      t.textContent = msg; t.classList.add('on');
+      clearTimeout(toastTimer);
+      toastTimer = setTimeout(() => t.classList.remove('on'), 2200);
+    }
+
+    renderCart();
+    showCategory('scented');
+    showPage();
+  </script>
+</body>
+</html>
